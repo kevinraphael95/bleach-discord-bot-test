@@ -11,7 +11,7 @@
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timezone
-from discord_utils import safe_send  # <-- Import safe_send
+from utils.discord_utils import safe_send  # <-- Import safe_send
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 🧠 Cog principal
