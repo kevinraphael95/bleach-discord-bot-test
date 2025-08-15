@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 # 📦 Modules internes
 # ──────────────────────────────────────────────────────────────
 from supabase_client import supabase
-from utils.discord_utils import safe_send, safe_edit, safe_respond  # <-- fonctions safe pour Discord
+from utils.discord_utils import safe_call, safe_send, safe_edit, safe_respond, safe_followup, safe_add_reaction
 
 # ──────────────────────────────────────────────────────────────
 # 🔧 Initialisation de l’environnement
@@ -104,7 +104,7 @@ async def load_commands():
 @bot.event
 async def on_ready():
     print(f"✅ Connecté en tant que {bot.user.name}")
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Bleach"))
+    await safe_call(bot.change_presence, activity=discord.Activity(type=discord.ActivityType.watching, name="Bleach"))
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -145,18 +145,15 @@ async def on_message(message):
             return
     except Exception as e:
         print(f"⚠️ Erreur lors de la vérification du verrou Supabase : {e}")
-        # On continue quand même
 
     if message.author.bot:
         return
 
     prefix = get_prefix(bot, message)
 
-    # ✅ Répondre à la mention directe du bot
     if message.content.strip() == f"<@{bot.user.id}>" or message.content.strip() == f"<@!{bot.user.id}>":
         await safe_send(message.channel, f"👋 Salut {message.author.mention} ! Utilise `{prefix}help` pour voir mes commandes.")
         return
-
 
     if not message.content.startswith(prefix):
         return
@@ -168,10 +165,10 @@ async def on_message(message):
 # ──────────────────────────────────────────────────────────────
 
 async def main():
+    asyncio.create_task(discord_worker())  # démarre le worker avant tout
     await load_commands()
     await bot.start(TOKEN)
 
 if __name__ == "__main__":
     keep_alive()
     asyncio.run(main())
-
