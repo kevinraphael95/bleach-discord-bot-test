@@ -83,3 +83,13 @@ async def safe_delete(message: discord.Message, delay: float = 0):
 
 async def safe_clear_reactions(message: discord.Message):
     return await enqueue(message.clear_reactions)
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 🔹 Fonction safe_call générique
+# ────────────────────────────────────────────────────────────────────────────────
+async def safe_call(func, *args, **kwargs):
+    """
+    Appelle n'importe quelle coroutine Discord de manière sécurisée via la queue globale.
+    Exemple : await safe_call(bot.change_presence, activity=...)
+    """
+    return await enqueue(func, *args, **kwargs)
