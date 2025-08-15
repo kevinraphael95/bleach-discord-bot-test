@@ -17,7 +17,7 @@ from discord.errors import HTTPException
 # ────────────────────────────────────────────────────────────────────────────────
 discord_queue = asyncio.Queue()
 RATE_LIMIT_DELAY = 1.0  # délai minimal entre chaque requête (en secondes)
-429_COOLDOWN = 10       # pause en cas de 429
+COOLDOWN_429 = 10       # pause en cas de 429
 
 async def discord_worker():
     while True:
@@ -28,7 +28,7 @@ async def discord_worker():
         except HTTPException as e:
             if e.status == 429:
                 print("[RateLimit] 429 détecté, pause globale...")
-                await asyncio.sleep(429_COOLDOWN)
+                await asyncio.sleep(COOLDOWN_429)
                 try:
                     result = await func(*args, **kwargs)
                     fut.set_result(result)
