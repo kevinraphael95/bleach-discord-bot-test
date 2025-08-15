@@ -13,124 +13,68 @@ import discord
 from discord.errors import HTTPException
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 🛡️ Fonctions sécurisées pour Discord
+# 🔹 Queue globale pour toutes les requêtes Discord
 # ────────────────────────────────────────────────────────────────────────────────
+discord_queue = asyncio.Queue()
+RATE_LIMIT_DELAY = 1.0  # délai minimal entre chaque requête (en secondes)
+429_COOLDOWN = 10       # pause en cas de 429
 
+async def discord_worker():
+    while True:
+        func, args, kwargs, fut = await discord_queue.get()
+        try:
+            result = await func(*args, **kwargs)
+            fut.set_result(result)
+        except HTTPException as e:
+            if e.status == 429:
+                print("[RateLimit] 429 détecté, pause globale...")
+                await asyncio.sleep(429_COOLDOWN)
+                try:
+                    result = await func(*args, **kwargs)
+                    fut.set_result(result)
+                except Exception as e2:
+                    fut.set_exception(e2)
+            else:
+                fut.set_exception(e)
+        except Exception as e:
+            fut.set_exception(e)
+        await asyncio.sleep(RATE_LIMIT_DELAY)
+        discord_queue.task_done()
+
+asyncio.create_task(discord_worker())
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 🔹 Fonction pour ajouter une action à la queue
+# ────────────────────────────────────────────────────────────────────────────────
+def enqueue(func, *args, **kwargs):
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+    discord_queue.put_nowait((func, args, kwargs, fut))
+    return fut
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 🔹 Fonctions “safe” qui utilisent la queue globale
+# ────────────────────────────────────────────────────────────────────────────────
 async def safe_send(channel: discord.TextChannel, content=None, **kwargs):
-    """
-    Envoie un message sur un channel Discord avec gestion du rate-limit (429).
-    """
-    try:
-        return await channel.send(content=content, **kwargs)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_send() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            return await channel.send(content=content, **kwargs)
-        raise e
+    return await enqueue(channel.send, content=content, **kwargs)
 
 async def safe_edit(message: discord.Message, content=None, **kwargs):
-    """
-    Modifie un message Discord avec gestion du rate-limit (429).
-    """
-    try:
-        return await message.edit(content=content, **kwargs)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_edit() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            return await message.edit(content=content, **kwargs)
-        raise e
+    return await enqueue(message.edit, content=content, **kwargs)
 
 async def safe_respond(interaction: discord.Interaction, content=None, **kwargs):
-    """
-    Répond à une interaction avec gestion du rate-limit (429).
-    """
-    try:
-        return await interaction.response.send_message(content=content, **kwargs)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_respond() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            return await interaction.response.send_message(content=content, **kwargs)
-        raise e
-
-async def safe_reply(ctx_or_message, content=None, **kwargs):
-    """
-    Répond à un message ou un contexte Discord avec gestion du rate-limit (429).
-    """
-    try:
-        return await ctx_or_message.reply(content=content, **kwargs)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_reply() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            return await ctx_or_message.reply(content=content, **kwargs)
-        raise e
-
-async def safe_add_reaction(message: discord.Message, emoji: str, delay: float = 0.3):
-    """
-    Ajoute une réaction en toute sécurité avec gestion du rate-limit (429).
-    Un petit délai est ajouté entre chaque réaction.
-    """
-    try:
-        await message.add_reaction(emoji)
-        await asyncio.sleep(delay)  # anti-429 : petit cooldown
-    except HTTPException as e:
-        if e.status == 429:
-            print(f"[RateLimit] safe_add_reaction() → 429 sur {emoji}. Pause...")
-            await asyncio.sleep(10)
-            await message.add_reaction(emoji)
-            await asyncio.sleep(delay)
-        else:
-            raise e
-    except Exception as e:
-        print(f"[Erreur] safe_add_reaction() → {e}")
-
-
+    return await enqueue(interaction.response.send_message, content=content, **kwargs)
 
 async def safe_followup(interaction: discord.Interaction, content=None, **kwargs):
-    """
-    Envoie un message de suivi avec gestion du rate-limit (429).
-    """
-    try:
-        return await interaction.followup.send(content=content, **kwargs)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_followup() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            return await interaction.followup.send(content=content, **kwargs)
-        raise e
+    return await enqueue(interaction.followup.send, content=content, **kwargs)
+
+async def safe_reply(ctx_or_message, content=None, **kwargs):
+    return await enqueue(ctx_or_message.reply, content=content, **kwargs)
+
+async def safe_add_reaction(message: discord.Message, emoji: str):
+    return await enqueue(message.add_reaction, emoji)
 
 async def safe_delete(message: discord.Message, delay: float = 0):
-    """
-    Supprime un message Discord avec gestion du rate-limit (429).
-    """
-    try:
-        await message.delete(delay=delay)
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_delete() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            await message.delete(delay=delay)
-        else:
-            raise e
-    except Exception as e:
-        print(f"[Erreur] safe_delete() → {e}")
+    return await enqueue(message.delete, delay=delay)
 
 async def safe_clear_reactions(message: discord.Message):
-    """
-    Supprime toutes les réactions d’un message avec gestion du rate-limit (429).
-    """
-    try:
-        await message.clear_reactions()
-    except HTTPException as e:
-        if e.status == 429:
-            print("[RateLimit] safe_clear_reactions() → 429 Too Many Requests. Pause...")
-            await asyncio.sleep(10)
-            await message.clear_reactions()
-        else:
-            raise e
-    except Exception as e:
-        print(f"[Erreur] safe_clear_reactions() → {e}")
-
+    return await enqueue(message.clear_reactions)
