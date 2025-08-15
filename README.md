@@ -20,3 +20,7 @@ SETUP RENDER (hébergeur gratuit pour déplyer le code)
 - mettre python bot.py dans startup command
 - mettre les trucs dans .env (je mettrai plus de détails plus tard, flemme)
 - attention : dans les settings : mettre auto-deploy sur off sinon le plan gratuit ne suffit pas (donc il faut déployer manuellement quand le dépo github est modifié pour que les modifs soient prises en compte)
+
+SETUP UPTIME ROBOT
+- se connecter à https://www.uptimerobot.com › uptime › monitoring
+- créer un ou des monitors pour pinger le lien violet dans render dans events pour que le bot reste en ligne
