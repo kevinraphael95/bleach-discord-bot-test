@@ -19,6 +19,9 @@ discord_queue = asyncio.Queue()
 RATE_LIMIT_DELAY = 1.0  # délai minimal entre chaque requête (en secondes)
 COOLDOWN_429 = 10       # pause en cas de 429
 
+# ────────────────────────────────────────────────────────────────────────────────
+# 🔹 Worker qui exécute les actions de la queue
+# ────────────────────────────────────────────────────────────────────────────────
 async def discord_worker():
     while True:
         func, args, kwargs, fut = await discord_queue.get()
@@ -41,7 +44,9 @@ async def discord_worker():
         await asyncio.sleep(RATE_LIMIT_DELAY)
         discord_queue.task_done()
 
-asyncio.create_task(discord_worker())
+# ❌ PLUS DE create_task ici au niveau global
+# Tu devras lancer le worker depuis ton bot.py comme ceci :
+# asyncio.create_task(discord_utils.discord_worker())
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 🔹 Fonction pour ajouter une action à la queue
