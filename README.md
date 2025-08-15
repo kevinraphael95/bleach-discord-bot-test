@@ -1,4 +1,4 @@
-je sais pas ce que je fais.
+je sais pas ce que je fais, chatgpt fais tout le travail
 
 SETUP TUTO APPROXIMATIF
 
