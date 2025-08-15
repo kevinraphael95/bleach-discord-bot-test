@@ -16,5 +16,7 @@ SETUP RENDER (hébergeur gratuit pour déplyer le code)
 - se connecter à render (créer un compte si besoin ou se connecter avec google)
 - new - web service
 - choisir le dépo github
+- choisir le plan gratuit
 - mettre python bot.py dans startup command
 - mettre les trucs dans .env (je mettrai plus de détails plus tard, flemme)
+- attention : dans les settings : mettre auto-deploy sur off sinon le plan gratuit ne suffit pas
